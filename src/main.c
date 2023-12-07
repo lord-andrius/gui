@@ -55,9 +55,6 @@ Rectangle fazer_coluna(Rectangle *dimensoes_atual, int grossura)
 
 bool fazer_botao(const char *texto, Rectangle dimensoesMaximas)
 {
-    printf("ultimo: %d %d %d %d\n",RetanguloUltimoWidget.x,RetanguloUltimoWidget.y,RetanguloUltimoWidget.width,RetanguloUltimoWidget.height);
-     printf("atual: %d %d %d %d\n",dimensoesMaximas.x,dimensoesMaximas.y,dimensoesMaximas.width,dimensoesMaximas.height);
-
     bool resultado = false;
     Vector2 posMouse = GetMousePosition();
     bool mouseEstaEmCimaDesseBotao = CheckCollisionPointRec(posMouse, dimensoesMaximas);
@@ -112,11 +109,14 @@ bool fazer_botao(const char *texto, Rectangle dimensoesMaximas)
 
 void fazer_entrada_de_texto(char *texto, int capacidade, bool capacidade_fixa, Rectangle dimensoesMaximas)
 {       
-          int borda = 2;
+     int borda = 2;
      bool mouseEstaNesseInput = CheckCollisionPointRec(GetMousePosition(), dimensoesMaximas);
      bool mouseEstaPressionado = IsMouseButtonDown(0);
+     Vector2 mousePos = GetMousePosition();
      bool clicaramNoInput = false;
-   
+
+     printf("%d\n", EstadoUltimoWidget);
+
      if(mouseEstaNesseInput) // esta no input
      {
         if(TipoUltimoWidget == INPUT) // o ultimo widget era um Input
@@ -129,23 +129,18 @@ void fazer_entrada_de_texto(char *texto, int capacidade, bool capacidade_fixa, R
                     RetanguloUltimoWidget.height == dimensoesMaximas.height
               )
               {
-                    if (EstadoUltimoWidget == PRESSIONADO && !mouseEstaPressionado) // o usuario tinha pressionado mais soltou
+                    if (EstadoUltimoWidget == PRESSIONADO && mouseEstaPressionado == false) // o usuario tinha pressionado mais soltou
                     {
                         EstadoUltimoWidget = ATIVO;
                         clicaramNoInput = true;
                     }
               }
         }
-        else // esta no input vindo de outro widget
-        {
-            if (!clicaramNoInput) 
-            {
-                if (mouseEstaPressionado) EstadoUltimoWidget = PRESSIONADO; //
-            }
-        }
 
         RetanguloUltimoWidget = dimensoesMaximas;
         TipoUltimoWidget = INPUT;
+        EstadoUltimoWidget = ATIVO;
+        if(mouseEstaPressionado) EstadoUltimoWidget = PRESSIONADO;
      }
 
 
@@ -175,11 +170,19 @@ void fazer_entrada_de_texto(char *texto, int capacidade, bool capacidade_fixa, R
         str[0] = texto[i];
         Rectangle hitBox = (Rectangle){posicaoHitBoxLetra.x, posicaoHitBoxLetra.y , MeasureText(str, tamanhoTexto) + espacamento,MeasureText(str, tamanhoTexto) + espacamento * 3 + 1};
         posicaoHitBoxLetra.x += MeasureText(str, tamanhoTexto) + espacamento;
-        if(CheckCollisionPointRec(GetMousePosition(), hitBox) && clicaramNoInput)
+
+        if(clicaramNoInput && CheckCollisionPointRec(mousePos, hitBox))
         {
             PosCaracteUltimoWidget = i;
-            DrawRectangle(posicaoHitBoxLetra.x, posicaoHitBoxLetra.y, 1, MeasureText(str, tamanhoTexto) + espacamento * 3 + 1,GREEN);
+            puts("laitu");
         }
+
+        if(PosCaracteUltimoWidget == i || PosCaracteUltimoWidget == -1)
+        {
+            Rectangle cursor = (Rectangle){hitBox.x + hitBox.width,hitBox.y,1,hitBox.height};
+            DrawRectangleLinesEx(cursor, 1, BLUE);
+        }
+
      }
 }
 
@@ -195,21 +198,7 @@ int main(void)
         Rectangle r = (Rectangle){0,0,Largura, Altura};
         BeginDrawing();
         ClearBackground(WHITE);
-        if(fazer_botao("Clique Aqui Para ver Um botao extra", fazer_linha(&r, 150)))
-            mostrarBotao = true;
-        fazer_botao("Clique Aqui", fazer_linha(&r, 50));
-        Rectangle coluna = fazer_coluna(&r, 50);
-        fazer_botao("Clique Aqui", fazer_linha(&coluna, 50));
-        fazer_botao("Clique Aqui", fazer_linha(&coluna, 50));
-        fazer_botao("Clique Aqui", coluna);
-        if(mostrarBotao)
-        {
-            bool resultado = fazer_botao("Clique Aqui Para esconder o botao extra",fazer_linha(&r, r.height - 50));
-            mostrarBotao = !resultado;
-        }
-        fazer_entrada_de_texto(buffer, capacidadeBuffer, true, fazer_linha(&r, 50));
-        fazer_entrada_de_texto(buffer, capacidadeBuffer, true, fazer_linha(&r, 150));
-        fazer_entrada_de_texto(buffer, capacidadeBuffer, true, fazer_linha(&r, 212));
+        fazer_entrada_de_texto(buffer, capacidadeBuffer,true,  fazer_linha(&r, 50));
         EndDrawing();
     }
 }
