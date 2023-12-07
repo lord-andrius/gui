@@ -2,13 +2,15 @@
 #include <stdio.h>
 #include <raylib.h>
 #include <assert.h>
+#include <string.h>
 
 #define Largura 1280
 #define Altura 720
 
 enum Widgets
 {
-    BOTAO = 1
+    BOTAO = 1,
+    INPUT = 2
 };
 
 enum Estado
@@ -23,8 +25,7 @@ Font FontePadrao = (Font){};
 Rectangle RetanguloUltimoWidget = (Rectangle){};
 int TipoUltimoWidget = 0;
 int EstadoUltimoWidget = 0;
-
-
+int PosCaracteUltimoWidget = 0;
 
 Rectangle fazer_linha(Rectangle *dimensoes_atual, int altura)
 {
@@ -52,21 +53,11 @@ Rectangle fazer_coluna(Rectangle *dimensoes_atual, int grossura)
     return coluna;
 }
 
-int tamanho_string(const char *texto)
-{
-    int contador = 0;
-    char caractere;
-    int resultado = 0;
-    while((caractere = texto[contador++]) != '\0')
-    {
-        GlyphInfo info = GetGlyphInfo(FontePadrao, caractere);
-        resultado += info.image.width;
-    }
-    return resultado;
-}
-
 bool fazer_botao(const char *texto, Rectangle dimensoesMaximas)
 {
+    printf("ultimo: %d %d %d %d\n",RetanguloUltimoWidget.x,RetanguloUltimoWidget.y,RetanguloUltimoWidget.width,RetanguloUltimoWidget.height);
+     printf("atual: %d %d %d %d\n",dimensoesMaximas.x,dimensoesMaximas.y,dimensoesMaximas.width,dimensoesMaximas.height);
+
     bool resultado = false;
     Vector2 posMouse = GetMousePosition();
     bool mouseEstaEmCimaDesseBotao = CheckCollisionPointRec(posMouse, dimensoesMaximas);
@@ -110,7 +101,7 @@ bool fazer_botao(const char *texto, Rectangle dimensoesMaximas)
     int tamanhoTexto = dimensoesMaximas.height / 2 > 50 ? 50 : dimensoesMaximas.height / 2;
     DrawText(
             texto,
-            dimensoesMaximas.x +  (dimensoesMaximas.width / 2) - tamanho_string(texto),
+            dimensoesMaximas.x +  (dimensoesMaximas.width / 2) - MeasureText(texto, tamanhoTexto) / 2,
             dimensoesMaximas.y + (dimensoesMaximas.height / 2 - tamanhoTexto / 2), 
             tamanhoTexto,
             WHITE
@@ -118,17 +109,93 @@ bool fazer_botao(const char *texto, Rectangle dimensoesMaximas)
     return resultado;
 }
 
+
+void fazer_entrada_de_texto(char *texto, int capacidade, bool capacidade_fixa, Rectangle dimensoesMaximas)
+{       
+          int borda = 2;
+     bool mouseEstaNesseInput = CheckCollisionPointRec(GetMousePosition(), dimensoesMaximas);
+     bool mouseEstaPressionado = IsMouseButtonDown(0);
+     bool clicaramNoInput = false;
+   
+     if(mouseEstaNesseInput) // esta no input
+     {
+        if(TipoUltimoWidget == INPUT) // o ultimo widget era um Input
+        {
+
+            if( // o ultimo widget era esse mesmo Input
+                    RetanguloUltimoWidget.x == dimensoesMaximas.x &&  
+                    RetanguloUltimoWidget.y == dimensoesMaximas.x &&
+                    RetanguloUltimoWidget.width == dimensoesMaximas.width &&
+                    RetanguloUltimoWidget.height == dimensoesMaximas.height
+              )
+              {
+                    if (EstadoUltimoWidget == PRESSIONADO && !mouseEstaPressionado) // o usuario tinha pressionado mais soltou
+                    {
+                        EstadoUltimoWidget = ATIVO;
+                        clicaramNoInput = true;
+                    }
+              }
+        }
+        else // esta no input vindo de outro widget
+        {
+            if (!clicaramNoInput) 
+            {
+                if (mouseEstaPressionado) EstadoUltimoWidget = PRESSIONADO; //
+            }
+        }
+
+        RetanguloUltimoWidget = dimensoesMaximas;
+        TipoUltimoWidget = INPUT;
+     }
+
+
+
+     DrawRectangleLinesEx(
+                dimensoesMaximas,
+                borda,
+                RED
+     );
+     
+     dimensoesMaximas.x += borda;
+     dimensoesMaximas.y += borda;
+     dimensoesMaximas.width -= borda * 2;
+     dimensoesMaximas.height -= borda * 2;
+
+
+     int tamanhoTexto = dimensoesMaximas.height / 2;
+     int espacamento = tamanhoTexto <= 10 ? 10 : tamanhoTexto / 10;
+     dimensoesMaximas.y += tamanhoTexto + espacamento * 2 + 1;
+     DrawText(texto, dimensoesMaximas.x, dimensoesMaximas.y, tamanhoTexto, BLACK);
+
+     Vector2 posicaoHitBoxLetra = (Vector2){dimensoesMaximas.x, dimensoesMaximas.y};
+    
+     char str[2] = {'\0'};
+     for(int i = 0; i < strlen(texto); i++)
+     {
+        str[0] = texto[i];
+        Rectangle hitBox = (Rectangle){posicaoHitBoxLetra.x, posicaoHitBoxLetra.y , MeasureText(str, tamanhoTexto) + espacamento,MeasureText(str, tamanhoTexto) + espacamento * 3 + 1};
+        posicaoHitBoxLetra.x += MeasureText(str, tamanhoTexto) + espacamento;
+        if(CheckCollisionPointRec(GetMousePosition(), hitBox) && clicaramNoInput)
+        {
+            PosCaracteUltimoWidget = i;
+            DrawRectangle(posicaoHitBoxLetra.x, posicaoHitBoxLetra.y, 1, MeasureText(str, tamanhoTexto) + espacamento * 3 + 1,GREEN);
+        }
+     }
+}
+
 int main(void)
 {
     bool mostrarBotao = false;
     InitWindow(Largura, Altura,"GUI");
     FontePadrao = GetFontDefault();
+    char buffer[20] = "Andrew";
+    int capacidadeBuffer = 20;
     while(!WindowShouldClose())
     {
         Rectangle r = (Rectangle){0,0,Largura, Altura};
         BeginDrawing();
         ClearBackground(WHITE);
-        if(fazer_botao("Clique Aqui Para ver Um botao extra", fazer_linha(&r, 50)))
+        if(fazer_botao("Clique Aqui Para ver Um botao extra", fazer_linha(&r, 150)))
             mostrarBotao = true;
         fazer_botao("Clique Aqui", fazer_linha(&r, 50));
         Rectangle coluna = fazer_coluna(&r, 50);
@@ -137,9 +204,12 @@ int main(void)
         fazer_botao("Clique Aqui", coluna);
         if(mostrarBotao)
         {
-            bool resultado = fazer_botao("Clique Aqui Para esconder o botao extra",fazer_linha(&r, r.height));
+            bool resultado = fazer_botao("Clique Aqui Para esconder o botao extra",fazer_linha(&r, r.height - 50));
             mostrarBotao = !resultado;
         }
+        fazer_entrada_de_texto(buffer, capacidadeBuffer, true, fazer_linha(&r, 50));
+        fazer_entrada_de_texto(buffer, capacidadeBuffer, true, fazer_linha(&r, 150));
+        fazer_entrada_de_texto(buffer, capacidadeBuffer, true, fazer_linha(&r, 212));
         EndDrawing();
     }
 }
